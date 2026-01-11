@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.example.project</groupId>
+	<artifactId>junit-jupiter-starter-maven-kotlin</artifactId>
+	<version>1.0.0-SNAPSHOT</version>
+	<packaging>jar</packaging>
+
+	<properties>
+		<kotlin.version>2.2.20</kotlin.version>
+		<junit.version>6.0.1</junit.version>
+
+		<maven.compiler.source>17</maven.compiler.source>
+		<maven.compiler.target>17</maven.compiler.target>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<junit.tags></junit.tags>
+		<pitest.targetTests>com.example.project.*</pitest.targetTests>
+		<pmd.includes>**/*.kt</pmd.includes>
+	</properties>
+
+	<!-- Keep all JUnit artifacts on the same version -->
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.junit</groupId>
+				<artifactId>junit-bom</artifactId>
+				<version>${junit.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<dependencies>
+		<!-- Kotlin runtime -->
+		<dependency>
+			<groupId>org.jetbrains.kotlin</groupId>
+			<artifactId>kotlin-stdlib</artifactId>
+			<version>${kotlin.version}</version>
+		</dependency>
+
+		<!-- JUnit Jupiter -->
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-params</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.junit.platform</groupId>
+			<artifactId>junit-platform-launcher</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<!-- Kotlin compiler -->
+			<plugin>
+				<groupId>org.jetbrains.kotlin</groupId>
+				<artifactId>kotlin-maven-plugin</artifactId>
+				<version>${kotlin.version}</version>
+				<extensions>true</extensions>
+				<executions>
+					<execution>
+						<id>compile</id>
+						<phase>compile</phase>
+						<goals>
+							<goal>compile</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>test-compile</id>
+						<phase>test-compile</phase>
+						<goals>
+							<goal>test-compile</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<jvmTarget>17</jvmTarget>
+				</configuration>
+			</plugin>
+
+			<!-- Ensure Kotlin sources are registered as source roots -->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>build-helper-maven-plugin</artifactId>
+				<version>3.5.0</version>
+				<executions>
+					<execution>
+						<id>add-kotlin-sources</id>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>add-source</goal>
+						</goals>
+						<configuration>
+							<sources>
+								<source>src/main/kotlin</source>
+							</sources>
+						</configuration>
+					</execution>
+					<execution>
+						<id>add-kotlin-test-sources</id>
+						<phase>generate-test-sources</phase>
+						<goals>
+							<goal>add-test-source</goal>
+						</goals>
+						<configuration>
+							<sources>
+								<source>src/test/kotlin</source>
+								<source>src/test/java</source>
+							</sources>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- JUnit Platform via Surefire -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>3.1.2</version>
+				<configuration>
+					<useModulePath>false</useModulePath>
+					<failIfNoTests>false</failIfNoTests>
+					<groups>${junit.tags}</groups>
+					<includes>
+						<include>**/*Test*</include>
+					</includes>
+				</configuration>
+			</plugin>
+
+			<!-- JaCoCo coverage -->
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.8.12</version>
+				<executions>
+					<execution>
+						<id>prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- PIT mutation testing (run via CLI) -->
+			<plugin>
+				<groupId>org.pitest</groupId>
+				<artifactId>pitest-maven</artifactId>
+				<version>1.16.1</version>
+				<dependencies>
+					<dependency>
+						<groupId>org.pitest</groupId>
+						<artifactId>pitest-junit5-plugin</artifactId>
+						<version>1.2.1</version>
+					</dependency>
+				</dependencies>
+				<configuration>
+					<targetClasses>
+						<param>com.example.project.*</param>
+					</targetClasses>
+					<targetTests>
+						<param>${pitest.targetTests}</param>
+					</targetTests>
+					<jvmArgs>
+						<param>-Djunit.jupiter.tags=${junit.tags}</param>
+					</jvmArgs>
+					<threads>4</threads>
+					<outputFormats>
+						<param>HTML</param>
+						<param>XML</param>
+					</outputFormats>
+					<timestampedReports>false</timestampedReports>
+					<failWhenNoMutations>false</failWhenNoMutations>
+				</configuration>
+				<executions>
+					<execution>
+						<id>mutation-testing</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>mutationCoverage</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- Assertion density helper -->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>3.3.0</version>
+				<executions>
+					<execution>
+						<id>assertion-density</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>java</goal>
+						</goals>
+						<configuration>
+							<!-- Kotlin file with top-level main() → *Kt class -->
+							<mainClass>com.example.project.AssertionDensityCalculatorKt</mainClass>
+							<classpathScope>test</classpathScope>
+							<systemProperties>
+								<systemProperty>
+									<key>junit.jupiter.tags</key>
+									<value>${junit.tags}</value>
+								</systemProperty>
+							</systemProperties>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<!-- PMD (single declaration) -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-pmd-plugin</artifactId>
+				<version>3.23.0</version>
+				<configuration>
+					<targetJdk>17</targetJdk>
+					<printFailingErrors>true</printFailingErrors>
+					<includeTests>true</includeTests>
+					<includes>
+						<include>${pmd.includes}</include>
+					</includes>
+					<targetDirectory>${project.build.directory}/site/pmd</targetDirectory>
+				</configuration>
+				<executions>
+					<execution>
+						<id>pmd-all</id>
+						<goals>
+							<goal>pmd</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+
+	<profiles>
+		<profile>
+			<id>human</id>
+			<properties>
+				<junit.tags>human</junit.tags>
+				<pitest.targetTests>com.example.project.HumanCalculatorTests</pitest.targetTests>
+				<pmd.includes>**/HumanCalculatorTests.kt</pmd.includes>
+			</properties>
+		</profile>
+		<profile>
+			<id>gpt</id>
+			<properties>
+				<junit.tags>gpt</junit.tags>
+				<pitest.targetTests>com.example.project.CalculatorTests</pitest.targetTests>
+				<pmd.includes>**/CalculatorTests.kt</pmd.includes>
+			</properties>
+		</profile>
+		<profile>
+			<id>codex</id>
+			<properties>
+				<junit.tags>codex</junit.tags>
+				<pitest.targetTests>com.example.project.CalculatorTestCodex</pitest.targetTests>
+				<pmd.includes>**/CalculatorTestCodex.kt</pmd.includes>
+			</properties>
+		</profile>
+	</profiles>
+</project>

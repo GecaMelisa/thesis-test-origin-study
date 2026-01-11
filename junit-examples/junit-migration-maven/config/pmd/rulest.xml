@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<ruleset name="Custom JUnit rules"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
+
+    <description>
+        Custom PMD rules for JUnit assertion messages and assertion density.
+    </description>
+
+    <!-- Every assert should have a message -->
+    <rule ref="category/java/bestpractices.xml/JUnitAssertionsShouldIncludeMessage"/>
+
+    <!-- Assertion density: at most 1 assert per test method -->
+    <rule ref="category/java/bestpractices.xml/JUnitTestContainsTooManyAsserts">
+        <properties>
+            <!-- 1 assert per test method for strict assertion density -->
+            <property name="maximumAsserts" value="1"/>
+        </properties>
+    </rule>
+
+</ruleset>

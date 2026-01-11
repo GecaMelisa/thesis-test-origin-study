@@ -1,0 +1,231 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.example.project</groupId>
+	<artifactId>junit-jupiter-starter-maven</artifactId>
+	<version>1.0.0-SNAPSHOT</version>
+
+	<properties>
+		<maven.compiler.source>17</maven.compiler.source>
+		<maven.compiler.target>17</maven.compiler.target>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+		<junit.bom.version>6.0.1</junit.bom.version>
+		<jacoco.version>0.8.12</jacoco.version>
+		<pitest.version>1.16.1</pitest.version>
+		<pitest.junit5.version>1.2.1</pitest.junit5.version>
+		<pmd.version>3.21.2</pmd.version>
+		<junit.tags></junit.tags>
+		<pitest.targetTests>com.example.project.*</pitest.targetTests>
+		<pmd.includes>**/*.java</pmd.includes>
+	</properties>
+
+	<!-- keep all JUnit artifacts on same version -->
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.junit</groupId>
+				<artifactId>junit-bom</artifactId>
+				<version>${junit.bom.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<dependencies>
+		<!-- JUnit Jupiter API + engine -->
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- Parameterized tests -->
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-params</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- Launcher (for IDEs / tools) -->
+		<dependency>
+			<groupId>org.junit.platform</groupId>
+			<artifactId>junit-platform-launcher</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+
+			<!-- Surefire: run JUnit 5/6 -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>3.1.2</version>
+				<configuration>
+					<useModulePath>false</useModulePath>
+					<groups>${junit.tags}</groups>
+					<includes>
+						<include>**/*Test*.java</include>
+					</includes>
+				</configuration>
+			</plugin>
+
+			<!-- JaCoCo coverage -->
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>${jacoco.version}</version>
+				<executions>
+					<execution>
+						<id>prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- PIT mutation testing -->
+			<plugin>
+				<groupId>org.pitest</groupId>
+				<artifactId>pitest-maven</artifactId>
+				<version>${pitest.version}</version>
+
+				<!-- Add JUnit 5 PIT plugin via dependency instead of junit5PluginVersion -->
+				<dependencies>
+					<dependency>
+						<groupId>org.pitest</groupId>
+						<artifactId>pitest-junit5-plugin</artifactId>
+						<version>${pitest.junit5.version}</version>
+					</dependency>
+				</dependencies>
+
+				<configuration>
+					<targetClasses>
+						<param>com.example.project.*</param>
+					</targetClasses>
+					<targetTests>
+						<param>${pitest.targetTests}</param>
+					</targetTests>
+					<jvmArgs>
+						<param>-Djunit.jupiter.tags=${junit.tags}</param>
+					</jvmArgs>
+
+					<threads>4</threads>
+					<outputFormats>
+						<param>HTML</param>
+						<param>XML</param>
+					</outputFormats>
+					<!-- don't fail build on low mutation score -->
+					<mutationThreshold>0</mutationThreshold>
+				</configuration>
+				<executions>
+					<execution>
+						<id>mutation-testing</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>mutationCoverage</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- PMD static analysis -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-pmd-plugin</artifactId>
+				<version>${pmd.version}</version>
+				<configuration>
+					<targetJdk>17</targetJdk>
+					<includes>
+						<include>${pmd.includes}</include>
+					</includes>
+					<rulesets>
+						<!-- spelling looks weird but this is the correct PMD path -->
+						<ruleset>category/java/bestpractices.xml</ruleset>
+					</rulesets>
+					<!-- report but never fail the build -->
+					<failOnViolation>false</failOnViolation>
+				</configuration>
+				<executions>
+					<execution>
+						<id>pmd</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- Assertion density calculator -->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>3.3.0</version>
+				<executions>
+					<execution>
+						<id>assertion-density</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>java</goal>
+						</goals>
+						<configuration>
+							<mainClass>com.example.project.AssertionDensityCalculator</mainClass>
+							<classpathScope>test</classpathScope>
+							<systemProperties>
+								<systemProperty>
+									<key>junit.jupiter.tags</key>
+									<value>${junit.tags}</value>
+								</systemProperty>
+							</systemProperties>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+		</plugins>
+	</build>
+
+	<profiles>
+		<profile>
+			<id>human</id>
+			<properties>
+				<junit.tags>human</junit.tags>
+				<pitest.targetTests>com.example.project.HumanCalculatorTests</pitest.targetTests>
+				<pmd.includes>**/HumanCalculatorTests.java</pmd.includes>
+			</properties>
+		</profile>
+		<profile>
+			<id>gpt</id>
+			<properties>
+				<junit.tags>gpt</junit.tags>
+				<pitest.targetTests>com.example.project.CalculatorTests</pitest.targetTests>
+				<pmd.includes>**/CalculatorTests.java</pmd.includes>
+			</properties>
+		</profile>
+		<profile>
+			<id>codex</id>
+			<properties>
+				<junit.tags>codex</junit.tags>
+				<pitest.targetTests>com.example.project.CalculatorTestCodex</pitest.targetTests>
+				<pmd.includes>**/CalculatorTestCodex.java</pmd.includes>
+			</properties>
+		</profile>
+	</profiles>
+
+</project>

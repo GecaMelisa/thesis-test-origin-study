@@ -1,0 +1,223 @@
+plugins {
+	id 'groovy'
+	id 'java'
+	id 'jacoco'
+	id 'pmd'
+	id 'info.solidsoft.pitest' version '1.15.0'
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	// Groovy runtime for main sources
+	implementation localGroovy()
+
+	// JUnit 6 (Jupiter + Platform) via BOM
+	testImplementation(platform("org.junit:junit-bom:6.0.1"))
+	testImplementation("org.junit.jupiter:junit-jupiter")
+	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+def includeTagsProp = (project.findProperty('includeTags') ?: '').toString().trim()
+def includeTagsList = includeTagsProp ? includeTagsProp.split(',')*.trim() : []
+
+def taggedTestFiles = { String tag ->
+	def tagPattern = ~/@Tag\(["']${tag}["']\)/
+	def allTests = fileTree('src/test') {
+		include '**/*.java'
+		include '**/*.groovy'
+	}
+	allTests.files.findAll { f -> f.text =~ tagPattern }
+}
+
+def taggedTestClasses = { String tag ->
+	def files = taggedTestFiles(tag)
+	def classes = []
+	files.each { f ->
+		def text = f.text
+		def pkgMatch = (text =~ /(?m)^\s*package\s+([A-Za-z0-9_.]+)\s*;?\s*$/)
+		def pkg = pkgMatch ? pkgMatch[0][1] : ''
+		def classMatch = (text =~ /(?m)^\s*(class|interface|enum)\s+([A-Za-z0-9_]+)/)
+		if (classMatch) {
+			def name = classMatch[0][2]
+			classes << (pkg ? "${pkg}.${name}" : name)
+		}
+	}
+	classes
+}
+
+tasks.withType(GroovyCompile).configureEach {
+	groovyOptions.optimizationOptions.indy = false
+}
+
+tasks.withType(Test).configureEach {
+	useJUnitPlatform {
+		if (!includeTagsList.isEmpty()) {
+			includeTags(*includeTagsList)
+		}
+	}
+}
+
+test {
+	useJUnitPlatform()
+
+	// Generate JaCoCo report automatically after tests
+	finalizedBy jacocoTestReport
+}
+
+/**
+ * 1) JaCoCo – code coverage
+ */
+jacoco {
+	// Modern JaCoCo that supports recent Java versions
+	toolVersion = "0.8.13"
+}
+
+jacocoTestReport {
+	dependsOn test
+	reports {
+		xml.required = true
+		html.required = true
+		csv.required = false
+	}
+	// reports end up in: build/reports/jacoco/test/
+}
+
+/**
+ * 2) PIT – mutation testing
+ */
+pitest {
+	testPlugin = 'junit5'
+	junit5PluginVersion = '1.2.2'
+	pitestVersion = '1.18.2'
+
+	// 👇 IMPORTANT: must be set
+	// Use your group as base (we set group = 'example' earlier)
+	// Later, for a real module, you'll replace this with the actual package:
+	// e.g. ['com.example.project.*']
+	targetClasses = ['com.example.project.*']
+	targetTests = ['com.example.project.*']
+
+	threads = 4
+	outputFormats = ['XML', 'HTML']
+	timestampedReports = false
+
+	// For this starter module with no code, don't fail if nothing is mutated
+	failWhenNoMutations = false
+	verbose = true
+
+	features = ['-fgroovy']
+
+	mainSourceSets = [sourceSets.main]
+	testSourceSets = [sourceSets.test]
+
+	if (!includeTagsList.isEmpty()) {
+		def tag = includeTagsList[0]
+		def taggedClasses = taggedTestClasses(tag)
+		if (!taggedClasses.isEmpty()) {
+			targetTests = taggedClasses
+		}
+		jvmArgs.addAll([
+			"-Djunit.jupiter.tags.include=${includeTagsList.join(',')}",
+			"-Djunit.platform.tags.include=${includeTagsList.join(',')}"
+		])
+	}
+}
+
+tasks.named('pmdTest', Pmd).configure {
+	if (!includeTagsList.isEmpty()) {
+		def tag = includeTagsList[0]
+		def files = taggedTestFiles(tag)
+		if (!files.isEmpty()) {
+			source = files
+		}
+	}
+}
+
+/**
+ * 3) PMD – static analysis
+ *    (Uses PMD 6.x – compatible with Gradle 7.6 and Java 17+)
+ */
+pmd {
+	consoleOutput = true
+	ignoreFailures = false         // fail build on violations
+	toolVersion = "6.55.0"         // stable 6.x with modern Java support :contentReference[oaicite:0]{index=0}
+	ruleSets = []
+	ruleSetFiles = files('config/pmd/test-ruleset.pmd')
+}
+
+// Optional: if you ever add src/main/java, PMD will analyse both main & tests
+tasks.withType(Pmd) {
+	reports {
+		xml.required = true
+		html.required = true
+	}
+}
+
+/**
+ * 4) Assertion Density – custom metric
+ *
+ * Very simple static metric:
+ *   assertion density = (number of assertion calls) / (number of @Test methods)
+ *
+ * It scans src/test/java, counts @Test occurrences and common assert* calls.
+ */
+tasks.register('assertionDensity') {
+	group = 'verification'
+	description = 'Calculates assertion density (assertions per @Test method) for JUnit tests.'
+
+	doLast {
+		def testSrcDirs = [file('src/test/java'), file('src/test/groovy')].findAll { it.exists() }
+		if (testSrcDirs.isEmpty()) {
+			println "No test sources found in src/test/java or src/test/groovy"
+			return
+		}
+
+		int testMethodCount = 0
+		int assertionCount = 0
+
+		testSrcDirs.each { dir ->
+			dir.eachFileRecurse { f ->
+				if (f.name.endsWith('.java')) {
+					if (!includeTagsList.isEmpty()) {
+						def tagPattern = ~/@Tag\(["']${includeTagsList[0]}["']\)/
+						if (!(f.text =~ tagPattern)) {
+							return
+						}
+					}
+					def text = f.text
+
+					// Count @Test-annotated methods
+					def testsMatcher = text =~ /@Test\b/
+					testMethodCount += testsMatcher.getCount()
+
+					// Count JUnit-style assertions (assertEquals, assertThrows, assertAll, ...)
+					def junitAssertPattern =
+							/\bassert(All|ArrayEquals|DoesNotThrow|Equals|False|InstanceOf|IterableEquals|LinesMatch|NotEquals|NotNull|NotSame|Null|Same|Throws|Timeout(?:Preemptively)?|True)\b/
+					def junitMatcher = text =~ junitAssertPattern
+					assertionCount += junitMatcher.getCount()
+
+					// Also count assertThat (AssertJ, etc.)
+					def assertThatMatcher = text =~ /\bassertThat\b/
+					assertionCount += assertThatMatcher.getCount()
+				}
+			}
+		}
+
+		if (testMethodCount == 0) {
+			println "No @Test methods found."
+			return
+		}
+
+		def density = assertionCount / (double) testMethodCount
+		println "Assertion density:"
+		println "  Assertions : ${assertionCount}"
+		println "  Test methods : ${testMethodCount}"
+		println "  Density : ${String.format('%.2f', density)} assertions per test method"
+	}
+}
+
+// Make "check" also run the custom metric
+check.dependsOn 'assertionDensity'

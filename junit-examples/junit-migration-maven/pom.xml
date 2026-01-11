@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.example</groupId>
+	<artifactId>junit-migration-maven</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>junit-migration-maven</name>
+	<packaging>jar</packaging>
+
+	<properties>
+		<!-- Java version -->
+		<maven.compiler.source>17</maven.compiler.source>
+		<maven.compiler.target>17</maven.compiler.target>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+		<!-- JUnit / JUnit Platform -->
+		<junit.jupiter.version>5.13.4</junit.jupiter.version>
+		<junit.platform.version>1.13.4</junit.platform.version>
+		<junit.vintage.version>5.13.4</junit.vintage.version>
+		<junit4.version>4.13.2</junit4.version>
+
+		<!-- Tools -->
+		<jacoco.version>0.8.12</jacoco.version>
+		<pitest.version>1.15.4</pitest.version>
+		<junit5.plugin.version>1.2.1</junit5.plugin.version>
+		<maven.surefire.plugin.version>3.2.5</maven.surefire.plugin.version>
+		<maven.pmd.plugin.version>3.24.0</maven.pmd.plugin.version>
+	</properties>
+
+	<!-- ====================== Dependencies ====================== -->
+	<dependencies>
+		<!-- JUnit Jupiter (JUnit 5) -->
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<version>${junit.jupiter.version}</version>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- JUnit Vintage (allows legacy JUnit 3/4 tests, useful for migration examples) -->
+		<dependency>
+			<groupId>org.junit.vintage</groupId>
+			<artifactId>junit-vintage-engine</artifactId>
+			<version>${junit.vintage.version}</version>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- JUnit 4 itself (if you ever add old-style tests) -->
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>${junit4.version}</version>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- JUnit Platform launcher so Surefire can run JUnit 5 tests -->
+		<dependency>
+			<groupId>org.junit.platform</groupId>
+			<artifactId>junit-platform-launcher</artifactId>
+			<version>${junit.platform.version}</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<!-- ====================== Build / Plugins ====================== -->
+	<build>
+		<plugins>
+			<!-- Surefire: runs unit tests on JUnit Platform -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>${maven.surefire.plugin.version}</version>
+				<configuration>
+					<useModulePath>false</useModulePath>
+					<includes>
+						<include>**/*Test.java</include>
+						<include>**/*Tests.java</include>
+					</includes>
+				</configuration>
+			</plugin>
+
+			<!-- JaCoCo code coverage -->
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>${jacoco.version}</version>
+				<executions>
+					<!-- Attach agent when tests run -->
+					<execution>
+						<id>prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<!-- Generate report in the test phase -->
+					<execution>
+						<id>report</id>
+						<phase>test</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- PIT mutation testing -->
+			<plugin>
+				<groupId>org.pitest</groupId>
+				<artifactId>pitest-maven</artifactId>
+				<version>${pitest.version}</version>
+				<configuration>
+					<!-- Classes under test -->
+					<targetClasses>
+						<param>com.example.project.*</param>
+					</targetClasses>
+
+					<!-- Test classes -->
+					<targetTests>
+						<param>com.example.project.*Test</param>
+						<param>com.example.project.*Tests</param>
+					</targetTests>
+
+					<!-- Stronger mutators, HTML + XML reports -->
+					<mutators>
+						<mutator>STRONGER</mutator>
+					</mutators>
+					<outputFormats>
+						<param>HTML</param>
+						<param>XML</param>
+					</outputFormats>
+					<timestampedReports>false</timestampedReports>
+				</configuration>
+				<dependencies>
+					<dependency>
+						<groupId>org.pitest</groupId>
+						<artifactId>pitest-junit5-plugin</artifactId>
+						<version>${junit5.plugin.version}</version>
+					</dependency>
+				</dependencies>
+			</plugin>
+
+			<!-- PMD with custom ruleset (assertion density + messages) -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-pmd-plugin</artifactId>
+				<version>${maven.pmd.plugin.version}</version>
+				<configuration>
+					<printFailingErrors>true</printFailingErrors>
+					<!-- Our custom rules in config/pmd/ruleset.xml -->
+					<rulesets>
+						<ruleset>config/pmd/rulest.xml</ruleset>
+					</rulesets>
+				</configuration>
+				<executions>
+					<execution>
+						<!-- Run PMD during verify -->
+						<phase>verify</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+
+	<profiles>
+		<profile>
+			<id>human</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-surefire-plugin</artifactId>
+						<configuration>
+							<useModulePath>false</useModulePath>
+							<includes>
+								<include>**/HumanCalculatorTests.java</include>
+							</includes>
+							<properties>
+								<configurationParameters>junit.jupiter.tags=human</configurationParameters>
+							</properties>
+							<systemPropertyVariables>
+								<junit.jupiter.tags>human</junit.jupiter.tags>
+							</systemPropertyVariables>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>org.pitest</groupId>
+						<artifactId>pitest-maven</artifactId>
+						<configuration>
+							<targetTests>
+								<param>com.example.project.HumanCalculatorTests</param>
+							</targetTests>
+							<jvmArgs>
+								<param>-Djunit.jupiter.tags=human</param>
+							</jvmArgs>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-pmd-plugin</artifactId>
+						<configuration>
+							<includeTests>true</includeTests>
+							<includes>
+								<include>**/HumanCalculatorTests.java</include>
+							</includes>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<id>gpt</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-surefire-plugin</artifactId>
+						<configuration>
+							<useModulePath>false</useModulePath>
+							<includes>
+								<include>**/CalculatorTests.java</include>
+							</includes>
+							<properties>
+								<configurationParameters>junit.jupiter.tags=gpt</configurationParameters>
+							</properties>
+							<systemPropertyVariables>
+								<junit.jupiter.tags>gpt</junit.jupiter.tags>
+							</systemPropertyVariables>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>org.pitest</groupId>
+						<artifactId>pitest-maven</artifactId>
+						<configuration>
+							<targetTests>
+								<param>com.example.project.CalculatorTests</param>
+							</targetTests>
+							<jvmArgs>
+								<param>-Djunit.jupiter.tags=gpt</param>
+							</jvmArgs>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-pmd-plugin</artifactId>
+						<configuration>
+							<includeTests>true</includeTests>
+							<includes>
+								<include>**/CalculatorTests.java</include>
+							</includes>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<id>codex</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-surefire-plugin</artifactId>
+						<configuration>
+							<useModulePath>false</useModulePath>
+							<includes>
+								<include>**/CalculatorTestCodex.java</include>
+							</includes>
+							<properties>
+								<configurationParameters>junit.jupiter.tags=codex</configurationParameters>
+							</properties>
+							<systemPropertyVariables>
+								<junit.jupiter.tags>codex</junit.jupiter.tags>
+							</systemPropertyVariables>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>org.pitest</groupId>
+						<artifactId>pitest-maven</artifactId>
+						<configuration>
+							<targetTests>
+								<param>com.example.project.CalculatorTestCodex</param>
+							</targetTests>
+							<jvmArgs>
+								<param>-Djunit.jupiter.tags=codex</param>
+							</jvmArgs>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-pmd-plugin</artifactId>
+						<configuration>
+							<includeTests>true</includeTests>
+							<includes>
+								<include>**/CalculatorTestCodex.java</include>
+							</includes>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+</project>

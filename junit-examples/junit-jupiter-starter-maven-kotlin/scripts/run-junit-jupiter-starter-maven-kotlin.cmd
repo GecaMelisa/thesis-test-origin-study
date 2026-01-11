@@ -1,0 +1,50 @@
+# 1) Plain tests
+.\mvnw.cmd clean test
+
+# 2) JaCoCo
+.\mvnw.cmd clean test jacoco:report
+# report: target/site/jacoco/index.html
+
+# 3) PIT
+.\mvnw.cmd clean test org.pitest:pitest-maven:mutationCoverage
+# report: target/pit-reports/*/index.html
+
+# 4) Assertion density
+.\mvnw.cmd test-compile exec:java@assertion-density
+# metric printed in console
+
+# 5) PMD on test sources
+.\mvnw.cmd pmd:check
+# report: target/site/pmd.html
+
+# 6) CODEX - only Codex tests and copied reports with Codex labels
+.\mvnw.cmd clean test -Dtest=*TestCodex -DfailIfNoTests=false
+
+.\mvnw.cmd jacoco:report
+powershell -NoProfile -Command "if (Test-Path 'target\\site\\jacoco') { Copy-Item -Recurse -Force 'target\\site\\jacoco' 'target\\site\\jacocoCodex' }"
+REM Codex JaCoCo report: target\site\jacocoCodex\index.html
+
+.\mvnw.cmd org.pitest:pitest-maven:mutationCoverage -DtargetTests="com.example.project.*Codex" -DtargetClasses="com.example.project.*" -DmutationThreshold=0
+powershell -NoProfile -Command "if (Test-Path 'target\\pit-reports') { Copy-Item -Recurse -Force 'target\\pit-reports' 'target\\pit-reports-Codex' }"
+REM Codex PIT report: target\pit-reports-Codex\index.html
+
+.\mvnw.cmd pmd:test
+powershell -NoProfile -Command "if (Test-Path 'target\\site\\pmd.html') { Copy-Item -Force 'target\\site\\pmd.html' 'target\\site\\pmd-Codex.html' }"
+REM Codex PMD report: target\site\pmd-Codex.html
+
+# 7) Everything in one go
+.\mvnw.cmd clean verify
+
+.\mvnw.cmd -Phuman verify
+.\mvnw.cmd -Pgpt verify
+.\mvnw.cmd -Pcodex verify
+
+.\mvnw.cmd -Phuman org.pitest:pitest-maven:mutationCoverage
+
+
+Start-Process "target\site\jacoco\index.html"
+Start-Process "target\site\pmd.html"
+Start-Process "target\pit-reports\index.html"
+
+
+

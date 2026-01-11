@@ -1,0 +1,199 @@
+plugins {
+	id 'java'
+	id 'jacoco'
+	id 'pmd'
+	id 'info.solidsoft.pitest' version '1.15.0'
+}
+
+group = 'com.example'
+version = '1.0-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	testImplementation 'org.junit.jupiter:junit-jupiter-api:6.0.1'
+	testImplementation 'org.junit.jupiter:junit-jupiter-params:6.0.1'
+	testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:6.0.1'
+
+	// Mockito for possible mocking
+	testImplementation 'org.mockito:mockito-core:5.13.0'
+}
+
+// ---- JUnit 5 via built-in Gradle support ----
+test {
+	useJUnitPlatform()
+
+	testLogging {
+		events "PASSED", "FAILED", "SKIPPED"
+	}
+}
+
+def includeTagsProp = (project.findProperty('includeTags') ?: '').toString().trim()
+def includeTagsList = includeTagsProp ? includeTagsProp.split(',')*.trim() : []
+
+tasks.withType(Test).configureEach {
+	useJUnitPlatform {
+		if (!includeTagsList.isEmpty()) {
+			includeTags(*includeTagsList)
+		}
+	}
+
+	testLogging {
+		events "PASSED", "FAILED", "SKIPPED"
+	}
+}
+
+tasks.register('testHuman', Test) {
+	group = 'verification'
+	description = 'Runs tests tagged human.'
+
+	useJUnitPlatform {
+		includeTags 'human'
+	}
+
+	testLogging {
+		events "PASSED", "FAILED", "SKIPPED"
+	}
+}
+
+tasks.register('testGpt', Test) {
+	group = 'verification'
+	description = 'Runs tests tagged gpt.'
+
+	useJUnitPlatform {
+		includeTags 'gpt'
+	}
+
+	testLogging {
+		events "PASSED", "FAILED", "SKIPPED"
+	}
+}
+
+tasks.register('testCodex', Test) {
+	group = 'verification'
+	description = 'Runs tests tagged codex.'
+
+	useJUnitPlatform {
+		includeTags 'codex'
+	}
+
+	testLogging {
+		events "PASSED", "FAILED", "SKIPPED"
+	}
+}
+
+// ---- JaCoCo ----
+jacoco {
+	toolVersion = "0.8.11"
+}
+
+tasks.jacocoTestReport {
+	dependsOn test
+	reports {
+		xml.required = true
+		html.required = true
+	}
+}
+
+// ---- PIT mutation testing ----
+pitest {
+	pitestVersion = '1.16.1'
+	testPlugin = 'junit5'
+	junit5PluginVersion = '1.2.1'
+
+	targetClasses = ['com.example.project.*']
+	targetTests   = ['com.example.project.*']
+
+	threads = 2
+	outputFormats = ['HTML', 'XML']
+	timestampedReports = false
+
+	if (!includeTagsList.isEmpty()) {
+		jvmArgs.addAll([
+			"-Djunit.jupiter.tags.include=${includeTagsList.join(',')}",
+			"-Djunit.platform.tags.include=${includeTagsList.join(',')}"
+		])
+	}
+}
+
+// ---- PMD on tests (test smells etc.) ----
+pmd {
+	toolVersion = '6.55.0'
+	consoleOutput = true
+	ignoreFailures = false
+
+	ruleSets = [] // we’ll use a custom ruleset like in the other modules
+	ruleSetFiles = files('config/pmd/test-ruleset.pmd')
+}
+
+// ---- Assertion density + test characteristics ----
+tasks.register('assertionDensity') {
+	group = 'verification'
+	description = 'Prints a very rough assertion density based on test sources.'
+
+	dependsOn testClasses
+
+	doLast {
+		def testSrc = fileTree('src/test/java') {
+			include '**/*.java'
+		}
+
+		int assertionLines = 0
+		int testMethods = 0
+
+		testSrc.each { f ->
+			f.eachLine { line ->
+				if (line =~ /\bassert(Equals|True|False|That|All|Throws|DoesNotThrow|Null|NotNull)\b/) {
+					assertionLines++
+				}
+				if (line =~ /@(Test|ParameterizedTest|RepeatedTest|TestFactory)\b/) {
+					testMethods++
+				}
+			}
+		}
+
+		println '--- Assertion density ---'
+		println "Test methods      : $testMethods"
+		println "Assertions (lines): $assertionLines"
+		println "Assertions / test : " +
+				(testMethods ? String.format('%.2f', assertionLines / (double) testMethods) : '0.00')
+	}
+}
+
+tasks.register('testCharacteristics') {
+	group = 'verification'
+	description = 'Basic suite characteristics: size & execution time (approx).'
+
+	dependsOn test
+
+	doLast {
+		def testSrc = fileTree('src/test/java') {
+			include '**/*.java'
+		}
+
+		int files = testSrc.files.size()
+		int totalLines = testSrc.collect { it.readLines().size() }.sum(0)
+
+		println '--- Test suite characteristics ---'
+		println "Number of test files : $files"
+		println "Total test LOC       : $totalLines"
+		println "Average LOC per file : " +
+				(files ? String.format('%.1f', totalLines / (double) files) : '0.0')
+	}
+}
+
+// ---- One big “all metrics” task ----
+tasks.register('fullTestMetrics') {
+	group = 'verification'
+	description = 'Runs tests, JaCoCo, PIT, PMD, assertion density & characteristics.'
+
+	dependsOn 'clean', 'test', 'jacocoTestReport', 'pitest', 'pmdTest', 'assertionDensity', 'testCharacteristics'
+}

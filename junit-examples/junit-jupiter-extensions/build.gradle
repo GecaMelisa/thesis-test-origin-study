@@ -1,0 +1,106 @@
+plugins {
+	id 'java-library'
+	id 'eclipse'           // optional
+	id 'idea'              // optional
+	id 'jacoco'            // for coverage
+	id 'info.solidsoft.pitest' version '1.15.0' // PIT plugin
+	id 'pmd'
+}
+
+repositories {
+	mavenCentral()
+}
+
+version = '1.0.0-SNAPSHOT'
+
+tasks.withType(JavaCompile).configureEach {
+	// original project used Java 8 – keep that for compatibility
+	sourceCompatibility = JavaVersion.VERSION_1_8
+	targetCompatibility = JavaVersion.VERSION_1_8
+	options.compilerArgs += '-parameters'
+}
+
+dependencies {
+	// ----- JUnit 5 BOM so versions stay aligned -----
+	api(platform("org.junit:junit-bom:5.13.4"))
+
+	// JUnit Jupiter API for MAIN code (extensions use this)
+	api("org.junit.jupiter:junit-jupiter-api") {
+		because 'building extensions in "main" using JUnit Jupiter API'
+	}
+
+	// ---- Test dependencies ----
+	testImplementation(platform("org.junit:junit-bom:5.13.4"))
+	testImplementation("org.junit.jupiter:junit-jupiter-api")
+
+	// Engine + launcher for running tests
+	testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine") {
+		because 'at least one engine is needed at test runtime'
+	}
+	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+	// Mockito for mocking (used in CartesianProductResolverTests)
+	testImplementation("org.mockito:mockito-core:5.14.2")
+}
+
+test {
+	useJUnitPlatform {
+		if (project.hasProperty('includeTags')) {
+			def tags = project.property('includeTags').toString().split(',')
+			includeTags(tags)
+		}
+		if (project.hasProperty('excludeTags')) {
+			def tags = project.property('excludeTags').toString().split(',')
+			excludeTags(tags)
+		}
+	}
+	// (optional but nice for debugging)
+	testLogging {
+		events "FAILED", "SKIPPED"
+		exceptionFormat "full"
+	}
+}
+
+// ------------ JaCoCo configuration -------------
+jacoco {
+	toolVersion = "0.8.11"
+}
+
+jacocoTestReport {
+	dependsOn test
+
+	reports {
+		xml.required.set(true)
+		csv.required.set(true)
+		html.required.set(true)
+		html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco"))
+	}
+}
+
+// ------------ PITEST configuration -------------
+pitest {
+	// core PIT version
+	pitestVersion = '1.16.1'
+	// JUnit 5 plugin
+	junit5PluginVersion = '1.2.1'
+	testPlugin = 'junit5'
+
+	// mutate only our main code
+	targetClasses = ['com.example.*']
+	targetTests   = ['com.example.*']
+
+	threads = 2
+	outputFormats = ['HTML', 'XML']
+	timestampedReports = false
+
+	// only fail the build if PIT itself crashes,
+	// not because mutation score is “too low”
+	failWhenNoMutations = false
+}
+pmd {
+	toolVersion = "6.55.0"
+	consoleOutput = true
+	ruleSets = [] // disable default to avoid too noisy rules
+	ruleSetFiles = files("config/pmd/test-ruleset.pmd")
+}
+

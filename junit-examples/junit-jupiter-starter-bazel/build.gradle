@@ -1,0 +1,203 @@
+plugins {
+    id 'java'
+    id 'jacoco'
+    id 'info.solidsoft.pitest' version '1.15.0'
+    id 'pmd'
+}
+
+group = 'com.example'
+version = '1.0.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+dependencies {
+    // JUnit 5 BOM + API/engine
+    testImplementation(platform("org.junit:junit-bom:6.0.1"))
+    testImplementation("org.junit.jupiter:junit-jupiter-api")
+    testImplementation("org.junit.jupiter:junit-jupiter-params")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
+
+    // Mockito if you ever need it in tests
+    testImplementation("org.mockito:mockito-core:5.14.2")
+
+    // PIT JUnit 5 plugin
+    pitest("org.pitest:pitest-junit5-plugin:1.2.1")
+}
+
+def taggedTestFiles = { String tag ->
+    def testDir = file("src/test/java")
+    if (!testDir.exists()) {
+        return [] as List<File>
+    }
+    def tagToken1 = "@Tag(\"${tag}\")"
+    def tagToken2 = "@Tag('${tag}')"
+    return fileTree(testDir).matching { include "**/*.java" }.files.findAll { f ->
+        def text = f.text
+        text.contains(tagToken1) || text.contains(tagToken2)
+    }
+}
+
+def taggedTestClasses = { String tag ->
+    def testDir = file("src/test/java")
+    return taggedTestFiles(tag).collect { f ->
+        def relPath = f.path.substring(testDir.path.length() + 1)
+        relPath = relPath.replace(File.separatorChar.toString(), ".")
+        return relPath.replace(".java", "")
+    }
+}
+
+test {
+    useJUnitPlatform {
+        if (project.hasProperty('includeTags')) {
+            def tags = project.property('includeTags').toString().split(',').collect { it.trim() }.findAll { it }
+            if (!tags.isEmpty()) {
+                includeTags(*tags)
+            }
+        }
+        if (project.hasProperty('excludeTags')) {
+            def tags = project.property('excludeTags').toString().split(',').collect { it.trim() }.findAll { it }
+            if (!tags.isEmpty()) {
+                excludeTags(*tags)
+            }
+        }
+    }
+
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
+
+/* ========== JaCoCo ========== */
+
+jacoco {
+    toolVersion = "0.8.11"
+}
+
+jacocoTestReport {
+    dependsOn test
+
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+
+        // build/reports/jacoco
+        html.outputLocation = layout.buildDirectory.dir("reports/jacoco")
+    }
+}
+
+/* ========== PIT (mutation testing) ========== */
+
+pitest {
+    // versions
+    pitestVersion = '1.15.0'
+    junit5PluginVersion = '1.2.1'
+
+    // Your production & test packages
+    targetClasses = ['com.example.project.*']
+    targetTests   = ['com.example.project.*']
+
+    if (project.hasProperty('includeTags')) {
+        def tags = project.property('includeTags').toString().split(',').collect { it.trim() }.findAll { it }
+        def classes = tags.collectMany { t -> taggedTestClasses(t) }.unique()
+        if (!classes.isEmpty()) {
+            targetTests = classes
+        }
+    }
+
+    testPlugin = 'junit5'
+    threads = 4
+    outputFormats = ['HTML', 'XML']
+    timestampedReports = false
+
+    // keep build from failing if no mutations are found
+    failWhenNoMutations = false
+}
+
+/* ========== PMD on tests ========== */
+pmd {
+    consoleOutput = true
+    toolVersion = "6.55.0"
+
+    // we use our own ruleset file (like in the previous module)
+    ruleSets = []  // disable default rulesets
+    ruleSetFiles = files("$projectDir/config/pmd/test-ruleset.pmd")
+}
+
+tasks.withType(Pmd).configureEach {
+    ignoreFailures = true
+    if (project.hasProperty('includeTags')) {
+        def tags = project.property('includeTags').toString().split(',').collect { it.trim() }.findAll { it }
+        def files = tags.collectMany { t -> taggedTestFiles(t) }.unique()
+        if (!files.isEmpty()) {
+            source = files
+        } else {
+            source = files()
+        }
+    } else {
+        source = fileTree("src/test/java")
+        include("**/*.java")
+        exclude("**/build/**")
+    }
+}
+
+/* ========== Assertion density (simple metric) ========== */
+
+tasks.register("assertionDensity") {
+    group = "verification"
+    description = "Compute simple assertion density for test sources"
+
+    dependsOn test
+
+    doLast {
+        def testDir = file("src/test/java")
+        if (!testDir.exists()) {
+            println "No test sources found in ${testDir}"
+            return
+        }
+
+        def testFiles
+        if (project.hasProperty('includeTags')) {
+            def tags = project.property('includeTags').toString().split(',').collect { it.trim() }.findAll { it }
+            testFiles = tags.collectMany { t -> taggedTestFiles(t) }.unique()
+        } else {
+            testFiles = fileTree(testDir).matching {
+                include "**/*Test.java", "**/*Tests.java", "**/*TestCase.java"
+            }.files
+        }
+
+        int assertionCount = 0
+        int testMethodCount = 0
+
+        testFiles.each { f ->
+            def text = f.text
+            assertionCount += (text =~ /\bassert(?:Equals|True|False|That|Throws|NotNull|Null|Same|NotSame|All|ArrayEquals)?\b/).count
+            testMethodCount += (text =~ /@Test/).count
+        }
+
+        println "=== Assertion density ==="
+        println "Test classes scanned : ${testFiles.size()}"
+        println "Test methods (@Test)  : ${testMethodCount}"
+        println "Assertions found      : ${assertionCount}"
+        if (testMethodCount > 0) {
+            println String.format("Assertions per test : %.2f", assertionCount / (double) testMethodCount)
+        }
+    }
+}
+
+/* ========== Everything in one go (like before) ========== */
+
+tasks.register("fullTestMetrics") {
+    group = "verification"
+    description = "Run tests + JaCoCo + PIT + assertion density + PMD"
+
+    dependsOn "clean", "test", "jacocoTestReport", "pitest", "assertionDensity", "pmdTest"
+}

@@ -1,0 +1,61 @@
+# 1) Run unit tests (JUnit 4 & 5)
+.\mvnw clean test
+
+# 2) JaCoCo report (also generated during test phase)
+.\mvnw jacoco:report
+# report: target/site/jacoco/index.html
+
+# 3) PIT mutation coverage
+.\mvnw pitest:mutationCoverage
+# report: target/pit-reports/*/index.html
+
+# 4) PMD with assertion-density rules
+.\mvnw pmd:check
+# report: target/site/pmd.html
+
+# 5) CODEX - only Codex tests and copied reports with Codex labels
+.\mvnw clean test -Dtest=*TestCodex -DfailIfNoTests=false
+
+.\mvnw jacoco:report
+powershell -NoProfile -Command "if (Test-Path 'target\\site\\jacoco') { Copy-Item -Recurse -Force 'target\\site\\jacoco' 'target\\site\\jacocoCodex' }"
+REM Codex JaCoCo report: target\site\jacocoCodex\index.html
+
+.\mvnw pitest:mutationCoverage -DtargetTests="com.example.project.*Codex" -DtargetClasses="com.example.project.*" -DmutationThreshold=0
+powershell -NoProfile -Command "if (Test-Path 'target\\pit-reports') { Copy-Item -Recurse -Force 'target\\pit-reports' 'target\\pit-reports-Codex' }"
+REM Codex PIT report: target\pit-reports-Codex\index.html
+
+.\mvnw pmd:check
+powershell -NoProfile -Command "if (Test-Path 'target\\site\\pmd.html') { Copy-Item -Force 'target\\site\\pmd.html' 'target\\site\\pmd-Codex.html' }"
+REM Codex PMD report: target\site\pmd-Codex.html
+
+# 6) Tag-specific isolated runs (human/gpt/codex)
+.\mvnw clean test -P human
+.\mvnw jacoco:report -P human
+.\mvnw pitest:mutationCoverage -P human
+.\mvnw pmd:check -P human
+
+.\mvnw clean test -P gpt
+.\mvnw jacoco:report -P gpt
+.\mvnw pitest:mutationCoverage -P gpt
+.\mvnw pmd:check -P gpt
+
+.\mvnw clean test -P codex
+.\mvnw jacoco:report -P codex
+.\mvnw pitest:mutationCoverage -P codex
+.\mvnw pmd:check -P codex
+
+# human
+.\mvnw clean test jacoco:report pitest:mutationCoverage pmd:check -P human
+
+# gpt
+.\mvnw clean test jacoco:report pitest:mutationCoverage pmd:check -P gpt
+
+# codex
+.\mvnw clean test jacoco:report pitest:mutationCoverage pmd:check -P codex
+
+Start-Process .\target\site\jacoco\index.html
+Start-Process .\target\pit-reports\index.html
+Start-Process .\target\site\pmd.html
+
+Start-Process .\target\surefire-reports\com.example.project.CalculatorTestCodex.txt
+Start-Process .\target\surefire-reports\TEST-com.example.project.CalculatorTestCodex.xml

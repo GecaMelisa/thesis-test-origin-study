@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<ruleset name="Custom rules"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd"
+         language="java">
+
+    <description>
+        Basic PMD rules plus some assertion-related rules
+        (useful later for assertion density analysis).
+    </description>
+
+    <!-- General best-practice rules -->
+    <rule ref="category/java/bestpractices.xml"/>
+
+    <!-- JUnit assertion-related rules (helpful for later metrics) -->
+    <rule ref="category/java/bestpractices.xml/UseAssertEqualsInsteadOfAssertTrue"/>
+    <rule ref="category/java/bestpractices.xml/JUnitAssertionsShouldIncludeMessage"/>
+</ruleset>

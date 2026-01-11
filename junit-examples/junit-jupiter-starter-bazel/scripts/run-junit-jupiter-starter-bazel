@@ -1,0 +1,32 @@
+#Plain tests
+.\gradlew.bat test --no-daemon --console=plain
+
+#JaCoCo Report
+.\gradlew.bat clean test jacocoTestReport --no-daemon --console=plain
+
+#PIT
+.\gradlew.bat clean pitest --no-daemon --console=plain
+
+#Assertion density
+.\gradlew.bat assertionDensity --no-daemon --console=plain
+
+#PMD on tests
+.\gradlew.bat pmdTest --no-daemon --console=plain
+
+#CODEX - run only Codex tests and copy reports with Codex labels
+.\gradlew.bat clean test --tests "*TestCodex" --no-daemon --console=plain
+
+.\gradlew.bat jacocoTestReport --no-daemon --console=plain
+powershell -NoProfile -Command "if (Test-Path 'build\\reports\\jacoco') { Copy-Item -Recurse -Force 'build\\reports\\jacoco' 'build\\reports\\jacocoCodex' }"
+REM Codex JaCoCo report: build\reports\jacocoCodex\index.html
+
+.\gradlew.bat pitest --no-daemon --console=plain
+powershell -NoProfile -Command "if (Test-Path 'build\\reports\\pitest') { Copy-Item -Recurse -Force 'build\\reports\\pitest' 'build\\reports\\pitestCodex' }"
+REM Codex PIT report: build\reports\pitestCodex\index.html
+
+.\gradlew.bat pmdTest --no-daemon --console=plain
+powershell -NoProfile -Command "if (Test-Path 'build\\reports\\pmd') { Copy-Item -Recurse -Force 'build\\reports\\pmd' 'build\\reports\\pmdCodex' }"
+REM Codex PMD report folder: build\reports\pmdCodex\
+
+#Everything in one go
+.\gradlew.bat clean fullTestMetrics --no-daemon --console=plain

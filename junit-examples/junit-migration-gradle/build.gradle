@@ -1,0 +1,127 @@
+plugins {
+	id 'java'
+	id 'jacoco'
+	// PIT – version compatible with recent Gradle
+	id 'info.solidsoft.pitest' version '1.15.0'
+	id 'pmd'
+}
+
+group = 'com.example'
+version = '1.0-SNAPSHOT'
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	// JUnit Jupiter – keep your version here
+	testImplementation 'org.junit.jupiter:junit-jupiter:5.13.4'
+}
+
+test {
+	useJUnitPlatform()
+}
+
+def junitTags = System.getProperty('junit.jupiter.tags')
+if (junitTags) {
+	test {
+		systemProperty 'junit.jupiter.tags', junitTags
+	}
+}
+
+/* -------------------------
+   JaCoCo configuration
+   ------------------------- */
+
+jacoco {
+	// recent JaCoCo version
+	toolVersion = "0.8.12"
+}
+
+jacocoTestReport {
+	dependsOn test
+	reports {
+		xml.required.set(true)
+		html.required.set(true)
+	}
+}
+
+/* -------------------------
+   PIT configuration
+   ------------------------- */
+
+pitest {
+	junit5PluginVersion = '1.2.1'
+	testPlugin = 'junit5'
+
+	// adapt to your package if different
+	targetClasses = ['com.example.project.*']
+	targetTests   = ['com.example.project.*Test', 'com.example.project.*Tests']
+
+	outputFormats = ['HTML', 'XML']
+	timestampedReports = false
+}
+
+if (junitTags) {
+	def tagToTests = [
+			human: ['com.example.project.HumanCalculatorTests'],
+			gpt:   ['com.example.project.CalculatorTests'],
+			codex: ['com.example.project.CalculatorTestCodex']
+	]
+	def selectedTests = tagToTests[junitTags]
+	pitest {
+		jvmArgs = ["-Djunit.jupiter.tags=${junitTags}"]
+		if (selectedTests != null) {
+			targetTests = selectedTests
+		}
+	}
+}
+
+/* -------------------------
+   PMD configuration
+   ------------------------- */
+
+pmd {
+	consoleOutput = true
+	// compatible with Gradle 8
+	toolVersion = "6.55.0"
+
+	// use built-in rule sets (no external XML file needed)
+	ruleSets = [
+			"category/java/bestpractices.xml",
+			"category/java/errorprone.xml"
+	]
+}
+
+def registerPmdTestTask = { String taskName, String includePattern ->
+	tasks.register(taskName, Pmd) {
+		group = 'verification'
+		description = "Run PMD on test sources matching ${includePattern}"
+		dependsOn tasks.testClasses
+		ruleSets = pmd.ruleSets
+		consoleOutput = pmd.consoleOutput
+		source = fileTree('src/test/java') { include includePattern }
+		classpath = sourceSets.test.compileClasspath
+		reports {
+			xml.required.set(true)
+			html.required.set(true)
+			xml.outputLocation.set(file("$buildDir/reports/pmd/${taskName}.xml"))
+			html.outputLocation.set(file("$buildDir/reports/pmd/${taskName}.html"))
+		}
+	}
+}
+
+registerPmdTestTask('pmdTestHuman', '**/HumanCalculatorTests.java')
+registerPmdTestTask('pmdTestGpt', '**/CalculatorTests.java')
+registerPmdTestTask('pmdTestCodex', '**/CalculatorTestCodex.java')
+
+/* -------------------------
+   Wire everything into `check`
+   ------------------------- */
+
+tasks.check {
+	dependsOn tasks.jacocoTestReport
+	dependsOn tasks.pitest
+	dependsOn tasks.pmdMain
+	dependsOn tasks.pmdTest
+}

@@ -1,0 +1,66 @@
+The other projects we configured (Gradle and Maven ones) make it easy to plug in:
+
+JaCoCo (jacocoTestReport)
+
+PIT (pitest)
+
+PMD (maven-pmd-plugin, pmdMain/pmdTest tasks)
+
+This project (junit-modular-world) has no Maven or Gradle build at all – it’s meant to be built with plain javac (see src/build/Build.java in the repo).
+
+Because of that, wiring JaCoCo, PIT and PMD here would require much heavier work
+
+# clean and create output directories
+
+Remove-Item -Recurse -Force bin, mods -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force -Path "bin\main" | Out-Null
+New-Item -ItemType Directory -Force -Path "bin\test" | Out-Null
+-> results in powershell
+
+# compile main modules (needs junit platform engine on module-path)
+
+javac --module-path "lib" --module-source-path src\main -d bin\main --module com.example.application,com.example.tool,ice.cream
+
+# compile test module
+
+javac --add-exports ice.cream/ice.cream=extra.module --module-path "lib;bin\main" --module-source-path src\test -d bin\test --module extra.module
+
+# run all tests
+
+java --add-exports ice.cream/ice.cream=extra.module --module-path "lib;bin\main;bin\test" -m org.junit.platform.console --select-module extra.module
+
+# CODEX - run only Codex tests (coverage/PMD/PIT not available in this plain-javac setup)
+
+Remove-Item -Recurse -Force bin, mods -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force -Path "bin\main","bin\test" | Out-Null
+
+javac --module-path "lib" --module-source-path src\main -d bin\main --module com.example.application,com.example.tool,ice.cream
+javac --add-exports ice.cream/ice.cream=extra.module --module-path "lib;bin\main" --module-source-path src\test -d bin\test --module extra.module
+
+java --add-exports ice.cream/ice.cream=extra.module --module-path "lib;bin\main;bin\test" -m org.junit.platform.console --select-module extra.module --include-tag codex
+
+# Tag-isolated runs (human/gpt/codex)
+
+Remove-Item -Recurse -Force bin, mods -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force -Path "bin\main","bin\test" | Out-Null
+
+javac --module-path "lib" --module-source-path src\main -d bin\main --module com.example.application,com.example.tool,ice.cream
+javac --add-exports ice.cream/ice.cream=extra.module --module-path "lib;bin\main" --module-source-path src\test -d bin\test --module extra.module
+
+java --add-exports ice.cream/ice.cream=extra.module --module-path "lib;bin\main;bin\test" -m org.junit.platform.console --select-module extra.module --include-tag human
+java --add-exports ice.cream/ice.cream=extra.module --module-path "lib;bin\main;bin\test" -m org.junit.platform.console --select-module extra.module --include-tag gpt
+java --add-exports ice.cream/ice.cream=extra.module --module-path "lib;bin\main;bin\test" -m org.junit.platform.console --select-module extra.module --include-tag codex
+
+
+Remove-Item -Recurse -Force bin, mods -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force -Path "bin\main","bin\test" | Out-Null
+
+javac --module-path "lib" --module-source-path src\main -d bin\main --module com.example.application,com.example.tool,ice.cream
+javac --add-exports ice.cream/ice.cream=extra.module --module-path "lib;bin\main" --module-source-path src\test -d bin\test --module extra.module
+
+java --add-exports ice.cream/ice.cream=extra.module `
+     --add-modules extra.module `
+     --module-path "lib;bin\main;bin\test" `
+     -m org.junit.platform.console execute `
+     --select-module extra.module `
+     --include-tag codex

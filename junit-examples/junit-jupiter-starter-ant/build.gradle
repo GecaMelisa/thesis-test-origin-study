@@ -1,0 +1,289 @@
+plugins {
+    id 'java'
+    id 'eclipse'
+    id 'idea'
+
+    // Metrics & analysis
+    id 'jacoco'
+    id 'info.solidsoft.pitest' version '1.15.0'
+    id 'pmd'
+}
+
+repositories {
+    mavenCentral()
+}
+
+group = 'com.example'
+version = '1.0.0-SNAPSHOT'
+
+java {
+    // You’re using Temurin 17 – this is fine
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+dependencies {
+    // --- JUnit 5 (same BOM trick as in first module) ---
+    testImplementation platform("org.junit:junit-bom:5.13.4")
+    testImplementation "org.junit.jupiter:junit-jupiter-api"
+    testImplementation("org.junit.jupiter:junit-jupiter-params")
+    testRuntimeOnly  "org.junit.jupiter:junit-jupiter-engine"
+
+    // Mockito for tests (if you need it later)
+    testImplementation "org.mockito:mockito-junit-jupiter:5.14.2"
+}
+
+test {
+    useJUnitPlatform()
+
+    // We need XML & HTML here for characteristics & reports
+    reports {
+        junitXml.required = true
+        html.required = true
+    }
+
+    testLogging {
+        events "PASSED", "FAILED", "SKIPPED"
+        exceptionFormat "short"
+    }
+}
+
+/* =========================================================
+ * Per-suite isolated runs (tag-based): human/gpt/codex
+ * ========================================================= */
+def suites = [
+        human: [tag: 'human'],
+        gpt  : [tag: 'gpt'],
+        codex: [tag: 'codex']
+]
+
+suites.each { name, cfg ->
+    tasks.register("${name}Test", Test) {
+        group = 'verification'
+        description = "Run ${name} tests only"
+        useJUnitPlatform { includeTags cfg.tag }
+
+        reports {
+            junitXml.outputLocation = layout.buildDirectory.dir("test-results/${name}")
+            html.outputLocation     = layout.buildDirectory.dir("reports/tests/${name}")
+        }
+        binaryResultsDirectory = layout.buildDirectory.dir("test-results/binary/${name}").get().asFile
+
+        jacoco {
+            destinationFile = layout.buildDirectory.file("jacoco/${name}.exec").get().asFile
+        }
+    }
+
+    tasks.register("jacoco${name.capitalize()}TestReport", JacocoReport) {
+        dependsOn tasks.named("${name}Test")
+        executionData(layout.buildDirectory.file("jacoco/${name}.exec"))
+        sourceSets sourceSets.main
+        reports {
+            xml.required = true
+            html.required = true
+            html.outputLocation = layout.buildDirectory.dir("reports/jacoco/${name}")
+        }
+    }
+
+    tasks.register("pitest${name.capitalize()}", info.solidsoft.gradle.pitest.PitestTask) {
+        dependsOn tasks.named("${name}Test")
+
+        // DO NOT set pitestVersion / junit5PluginVersion here (plugin 1.15.0 will fail)
+
+        targetClasses = ['com.example.project.*']
+        targetTests   = ['com.example.project.*']
+        includedGroups = [cfg.tag] // use JUnit 5 tags for suite isolation
+
+        outputFormats = ['HTML', 'XML']
+        timestampedReports = false
+        reportDir = file("$buildDir/reports/pitest/${name}")
+
+        // Required inputs for custom PitestTask (normally wired by the plugin).
+        sourceDirs.setFrom(sourceSets.main.allSource.srcDirs)
+        mutableCodePaths.setFrom(sourceSets.main.output.classesDirs)
+        additionalClasspath.setFrom(sourceSets.test.runtimeClasspath)
+        launchClasspath.setFrom(configurations.pitest)
+        useAdditionalClasspathFile.set(false)
+        additionalClasspathFile.set(layout.buildDirectory.file("pitest-classpath-${name}.txt"))
+        defaultFileForHistoryData.set(layout.buildDirectory.file("pitest-history-${name}.txt"))
+    }
+
+}
+
+// convenience lifecycle tasks
+tasks.register('fullHuman') { dependsOn 'humanTest', 'jacocoHumanTestReport', 'pitestHuman' }
+tasks.register('fullGpt')   { dependsOn 'gptTest', 'jacocoGptTestReport', 'pitestGpt' }
+tasks.register('fullCodex') { dependsOn 'codexTest', 'jacocoCodexTestReport', 'pitestCodex' }
+
+/* =========================================================
+ * A) JACOCO – Code coverage
+ * ========================================================= */
+
+jacoco {
+    toolVersion = "0.8.11"
+}
+
+jacocoTestReport {
+    dependsOn test
+
+    reports {
+        xml.required  = true   // for tools
+        html.required = true   // nice HTML report
+        csv.required  = false
+    }
+}
+
+/* =========================================================
+ * B) PITEST – Mutation testing
+ * ========================================================= */
+
+pitest {
+    pitestVersion = '1.15.6'
+    junit5PluginVersion = '1.2.1'
+    targetClasses = ['com.example.project.*']
+    outputFormats = ['HTML', 'XML']
+    timestampedReports = false
+}
+
+/* =========================================================
+ * C) Test characteristics / efficiency metrics
+ *    - test size
+ *    - failures
+ *    - total execution time
+ *    Results written to: build/test-characteristics.log
+ * ========================================================= */
+
+tasks.register('testCharacteristics') {
+    group = 'verification'
+    description = 'Run tests once and capture size & execution time'
+
+    dependsOn test
+
+    doLast {
+        def resultsDir = file("$buildDir/test-results/test")
+        if (!resultsDir.exists()) {
+            println "No test-results found in $resultsDir"
+            return
+        }
+
+        def testXmls = fileTree(resultsDir).matching { include '**/*.xml' }
+
+        int testCount = 0
+        int failureCount = 0
+        long totalDurationMs = 0L
+
+        testXmls.each { File f ->
+            def xml = new XmlSlurper().parse(f)
+
+            def cases = xml.'**'.findAll { it.name() == 'testcase' }
+            testCount += cases.size()
+
+            def failures = xml.'**'.findAll { n ->
+                n.name() in ['failure', 'error']
+            }
+            failureCount += failures.size()
+
+            def timeAttr = (xml.@time.text() ?: "0") as BigDecimal
+            totalDurationMs += (timeAttr * 1000G).longValue()
+        }
+
+        println "\n--- Test summary (size and result) ---"
+        println "Total test cases : $testCount"
+        println "Failures + errors: $failureCount"
+        println "All green        : ${failureCount == 0}"
+
+        println "\n--- Build time (approx execution time) ---"
+        println "Total test time (ms): $totalDurationMs"
+
+        def logFile = file("$buildDir/test-characteristics.log")
+        logFile.text = """Total test cases : $testCount
+Failures + errors: $failureCount
+All green        : ${failureCount == 0}
+Total test time (ms): $totalDurationMs
+"""
+        println "\nFull detailed log: ${logFile.path}"
+    }
+}
+
+/* =========================================================
+ * D) Assertion density – very simple metric
+ *    Counts asserts vs test methods.
+ *    Result: build/assertion-density.log
+ * ========================================================= */
+
+tasks.register('assertionDensity') {
+    group = 'verification'
+    description = 'Calculates a simple assertion density metric for test code'
+
+    def testSrcDir = file('src/test/java')
+
+    doLast {
+        if (!testSrcDir.exists()) {
+            println "No test sources in $testSrcDir"
+            return
+        }
+
+        def testFiles = fileTree(testSrcDir).matching {
+            include '**/*Test.java', '**/*Tests.java', '**/*TestHuman.java', '**/*TestsHuman.java'
+        }
+
+        int methodCount = 0
+        int assertionCount = 0
+
+        testFiles.each { File f ->
+            def text = f.text
+
+            // crude but OK for metric: count common JUnit 5 test annotations
+            methodCount += (text =~ /@(?:Test|ParameterizedTest|RepeatedTest|TestFactory|TestTemplate)/).count
+
+            // count common assertion calls
+            assertionCount += (text =~ /\bassert(?:Equals|True|False|Null|NotNull|Throws)\b/).count
+        }
+
+        double density = methodCount == 0 ? 0.0 : (assertionCount as double) / methodCount
+
+        println "\n--- Assertion density ---"
+        println "Test methods     : $methodCount"
+        println "Assertion calls  : $assertionCount"
+        println "Assertions / test: ${String.format('%.2f', density)}"
+
+        def logFile = file("$buildDir/assertion-density.log")
+        logFile.text = """Test methods        : $methodCount
+Assertion calls     : $assertionCount
+Assertions per test : ${String.format('%.2f', density)}
+"""
+        println "\nFull detailed log: ${logFile.path}"
+    }
+}
+
+/* =========================================================
+ * E) PMD – test-smell / maintainability rules
+ *    Uses ruleset from: config/pmd/test-ruleset.pmd
+ * ========================================================= */
+
+pmd {
+    toolVersion = '6.55.0'
+    ruleSets = []   // we only use custom file
+    ruleSetFiles = files('config/pmd/test-ruleset.pmd')
+}
+
+tasks.withType(Pmd).configureEach { Pmd task ->
+    // ONLY analyze tests
+    source = sourceSets.test.allJava
+    include '**/*Test.java', '**/*Tests.java', '**/*TestHuman.java', '**/*TestsHuman.java'
+    exclude '**/build/**'
+
+    reports {
+        xml.required  = true
+        html.required = true
+    }
+}
+
+/* Convenience lifecycle task to run EVERYTHING */
+
+tasks.register('fullTestMetrics') {
+    group = 'verification'
+    description = 'Runs tests, Jacoco, PIT, characteristics, assertion density and PMD'
+
+    dependsOn 'test', 'jacocoTestReport', 'pitest', 'testCharacteristics', 'assertionDensity', 'pmdTest'
+}
