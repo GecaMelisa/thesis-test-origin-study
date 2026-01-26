@@ -1,0 +1,139 @@
+ROLE
+You are an expert Java developer and test engineer specialized in JUnit 5 (Jupiter).
+
+SCOPE
+I will provide the source code (files and packages) for ONE module from the repository junit-team/junit-examples.
+For this run, you must work ONLY inside the module folder:
+{{MODULE_FOLDER_NAME}}
+Ignore all other modules/folders, even if you can see them.
+
+GOAL
+Generate a complete JUnit 5 test suite for this module (which currently has no tests or incomplete tests).
+Your tests must:
+1) Cover normal behavior (happy paths)
+2) Explicitly cover boundary conditions (0/1/negative, empty/one/many, min/max, long strings, etc.)
+3) Explicitly cover invalid inputs and exception handling (nulls, out-of-range, invalid states) using assertThrows with the correct exception type
+4) Aim for high branch coverage (if/else/switch, meaningful boolean combinations)
+
+IMPORTANT CONTEXT
+If I provide notes about what “human-written tests already cover” (from other modules or previous work), treat those notes as requirements: do not omit those behaviors. Your job is to ensure the same behaviors are tested here (plus boundaries/invalid/exception handling), not to duplicate irrelevant things.
+
+RULES
+- Use only JUnit 5 imports:
+  org.junit.jupiter.api.*
+  org.junit.jupiter.api.Assertions.*
+- Do NOT use JUnit 4, Hamcrest, Mockito, AssertJ, or other libraries unless I explicitly allow it.
+- Tests must be deterministic, fast, and independent (no reliance on execution order).
+- Prefer clear Arrange–Act–Assert structure.
+- For each important production class, create a test class named:
+  <ClassName>Tests
+- Place tests in the mirrored package structure under:
+  {{MODULE_FOLDER_NAME}}/src/test/java/...
+- Do not modify production code unless I explicitly ask you to.
+
+OUTPUT FORMAT (STRICT)
+A) First output a table:
+   production class | test class | test file path (relative to repo root)
+B) Then, for each test file:
+   1) Print a one-line heading with the relative file path, e.g.:
+      {{MODULE_FOLDER_NAME}}/src/test/java/com/example/.../<ClassName>Tests.java
+   2) Below that, output the FULL Java test class in ONE code block
+   3) Add ONE short sentence describing what is covered (happy path + boundaries + invalid/exception cases)
+
+QUALITY CHECK BEFORE FINAL OUTPUT
+Before printing the final answer, ensure:
+- Every public method with logic has at least: one happy-path + one boundary + one invalid/exception test (where applicable)
+- All exception tests use assertThrows and validate exception type (and message only if stable)
+- The test class names and package paths match the production packages exactly
+
+
+You are an experienced Java developer and test engineer. Generate JUnit 5 (Jupiter) unit tests for the module:
+{{MODULE_FOLDER_NAME}}
+
+Rules:
+- Work ONLY inside {{MODULE_FOLDER_NAME}}. Ignore other modules.
+- Use only JUnit 5 imports: org.junit.jupiter.api.* and org.junit.jupiter.api.Assertions.*
+- Create <ClassName>Tests for each important production class.
+- Put tests under: {{MODULE_FOLDER_NAME}}/src/test/java/... (mirrored package)
+- Focus strongly on:
+  - boundary conditions (0/1/negative, empty/one/many, min/max, long strings)
+  - invalid inputs (null, out-of-range, invalid states)
+  - exception handling using assertThrows with the correct exception type
+- Aim for branch coverage (if/else/switch/boolean combinations).
+- Keep tests fast, deterministic, independent. No external libs unless necessary.
+
+Output:
+1) A mapping table: production class | test class | test path (relative to repo root)
+2) Then output each test file:
+   - first line: relative path
+   - then the full Java test class in one code block
+   - then 1 sentence describing coverage
+
+
+#PYTHON - GPT
+
+ROLE
+You are an experienced Python developer and software test engineer with expertise in pytest and data-processing libraries.
+
+SCOPE
+I will provide a specific slice of the pandas repository.
+For this run, work ONLY on the following target file:
+pandas/io/parsers/readers.py
+
+Ignore all other files, modules, or tests even if visible.
+
+GOAL
+Generate pytest-based unit tests for the provided code slice, focusing on the read_csv functionality.
+The goal is to assess test quality rather than completeness of the entire pandas test suite.
+
+TESTING REQUIREMENTS
+Your tests must:
+1) Cover normal (happy-path) behavior of read_csv
+2) Explicitly cover boundary conditions:
+   - empty inputs
+   - minimal inputs
+   - large inputs
+   - unusual but valid parameter combinations
+3) Explicitly cover invalid inputs and error handling:
+   - null / None values
+   - invalid argument combinations
+   - malformed input data
+   - incorrect parameter types
+4) Validate that appropriate exceptions are raised using pytest.raises with the correct exception types
+5) Prefer semantic correctness of assertions over raw coverage
+
+RULES
+- Use pytest style only (no unittest.TestCase)
+- Do not rely on filesystem state unless explicitly required
+- Tests must be deterministic, fast, and independent
+- Do not modify production code
+- Do not use external libraries beyond pytest, pandas, and standard Python utilities
+
+OUTPUT FORMAT
+For each test file:
+1) Print the relative test file path under:
+   pandas/tests/io/parser/
+2) Output the full test code in a single code block
+3) Add one short sentence explaining what the test cases cover (happy path + boundary + invalid cases)
+
+QUALITY CHECK
+Before final output, ensure:
+- Tests focus on correctness and exception behavior, not only statement coverage
+- Boundary and invalid-input cases are explicitly present
+- Assertions reflect expected behavior, not just absence of crashes
+
+
+#CODEX
+Analyze pandas/io/parsers/readers.py and generate pytest unit tests for read_csv.
+
+Requirements:
+- Work only on readers.py
+- Focus on boundary conditions, invalid inputs, and exception handling
+- Use pytest.raises for error cases
+- Keep tests deterministic and fast
+- Do not modify production code
+
+Output:
+- Test file path under pandas/tests/io/parser/
+- Full pytest test code
+- One sentence explaining coverage
