@@ -59,3 +59,25 @@ Start-Process .\target\site\pmd.html
 
 Start-Process .\target\surefire-reports\com.example.project.CalculatorTestCodex.txt
 Start-Process .\target\surefire-reports\TEST-com.example.project.CalculatorTestCodex.xml
+
+
+# CLAUDE - only Claude tests and copied reports with Claude labels
+.\mvnw clean test -Dtest=*TestsClaude -DfailIfNoTests=false
+
+.\mvnw jacoco:report
+powershell -NoProfile -Command "if (Test-Path 'target\\site\\jacoco') { Copy-Item -Recurse -Force 'target\\site\\jacoco' 'target\\site\\jacocoClaude' }"
+REM Claude JaCoCo report: target\site\jacocoClaude\index.html
+
+.\mvnw pitest:mutationCoverage -DtargetTests="com.example.project.*Claude" -DtargetClasses="com.example.project.*" -DmutationThreshold=0
+powershell -NoProfile -Command "if (Test-Path 'target\\pit-reports') { Copy-Item -Recurse -Force 'target\\pit-reports' 'target\\pit-reports-Claude' }"
+REM Claude PIT report: target\pit-reports-Claude\index.html
+
+.\mvnw pmd:check
+powershell -NoProfile -Command "if (Test-Path 'target\\site\\pmd.html') { Copy-Item -Force 'target\\site\\pmd.html' 'target\\site\\pmd-Claude.html' }"
+REM Claude PMD report: target\site\pmd-Claude.html
+
+# claude
+.\mvnw clean test jacoco:report pitest:mutationCoverage pmd:check -Dgroups=claude
+
+Start-Process .\target\surefire-reports\com.example.project.CalculatorTestsClaude.txt
+Start-Process .\target\surefire-reports\TEST-com.example.project.CalculatorTestsClaude.xml

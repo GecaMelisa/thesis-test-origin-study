@@ -64,3 +64,21 @@ java --add-exports ice.cream/ice.cream=extra.module `
      -m org.junit.platform.console execute `
      --select-module extra.module `
      --include-tag codex
+
+
+# CLAUDE - run only Claude tests (coverage/PMD/PIT not available in this plain-javac setup)
+
+Remove-Item -Recurse -Force bin, mods -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force -Path "bin\main","bin\test" | Out-Null
+
+javac --module-path "lib" --module-source-path src\main -d bin\main --module com.example.application,com.example.tool,ice.cream
+javac --add-exports ice.cream/ice.cream=extra.module --module-path "lib;bin\main" --module-source-path src\test -d bin\test --module extra.module
+
+java --add-exports ice.cream/ice.cream=extra.module --module-path "lib;bin\main;bin\test" -m org.junit.platform.console --select-module extra.module --include-tag claude
+
+java --add-exports ice.cream/ice.cream=extra.module `
+     --add-modules extra.module `
+     --module-path "lib;bin\main;bin\test" `
+     -m org.junit.platform.console execute `
+     --select-module extra.module `
+     --include-tag claude

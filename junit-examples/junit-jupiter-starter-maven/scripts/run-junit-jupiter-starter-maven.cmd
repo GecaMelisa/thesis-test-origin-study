@@ -47,3 +47,25 @@ REM Codex PMD report: target\site\pmd-Codex.html
 Start-Process "target\site\jacoco\index.html"
 Start-Process "target\site\pmd.html"
 Start-Process "target\pit-reports\index.html"
+
+
+# CLAUDE - only Claude tests and copied reports with Claude labels
+.\mvnw.cmd clean test -Dtest=*TestsClaude -DfailIfNoTests=false
+
+.\mvnw.cmd jacoco:report
+powershell -NoProfile -Command "if (Test-Path 'target\\site\\jacoco') { Copy-Item -Recurse -Force 'target\\site\\jacoco' 'target\\site\\jacocoClaude' }"
+REM Claude JaCoCo report: target\site\jacocoClaude\index.html
+
+.\mvnw.cmd org.pitest:pitest-maven:mutationCoverage -DtargetTests="com.example.project.*Claude" -DtargetClasses="com.example.project.*" -DmutationThreshold=0
+powershell -NoProfile -Command "if (Test-Path 'target\\pit-reports') { Copy-Item -Recurse -Force 'target\\pit-reports' 'target\\pit-reports-Claude' }"
+REM Claude PIT report: target\pit-reports-Claude\index.html
+
+.\mvnw.cmd pmd:check
+powershell -NoProfile -Command "if (Test-Path 'target\\site\\pmd.html') { Copy-Item -Force 'target\\site\\pmd.html' 'target\\site\\pmd-Claude.html' }"
+REM Claude PMD report: target\site\pmd-Claude.html
+
+# CLAUDE - via tag filter
+.\mvnw.cmd -Dtest=* -Djunit.jupiter.tags=claude test
+
+# CLAUDE - ALL IN ONE (verify)
+.\mvnw.cmd clean test jacoco:report org.pitest:pitest-maven:mutationCoverage pmd:check -Dtest=*TestsClaude -DfailIfNoTests=false -DtargetTests="com.example.project.*Claude" -DtargetClasses="com.example.project.*"

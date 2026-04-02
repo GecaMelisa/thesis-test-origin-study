@@ -27,3 +27,9 @@ sbt -DincludeTags=codex test
 sbt -DincludeTags=codex jacoco
 powershell -NoProfile -Command "if (Test-Path 'target\\scala-*\\jacoco\\report\\html') { Get-ChildItem -Path 'target\\scala-*\\jacoco\\report\\html' | ForEach-Object { Copy-Item -Recurse -Force $_.FullName 'target\\jacocoCodex' } }"
 Start-Process "target\\jacocoCodex\\index.html"
+
+# Claude
+sbt -DincludeTags=claude test
+sbt -DincludeTags=claude jacoco
+powershell -NoProfile -Command "if (Test-Path 'target\\scala-*\\jacoco\\report\\html') { Get-ChildItem -Path 'target\\scala-*\\jacoco\\report\\html' | ForEach-Object { Copy-Item -Recurse -Force $_.FullName 'target\\jacocoClaude' } }"
+Start-Process "target\\jacocoClaude\\index.html"

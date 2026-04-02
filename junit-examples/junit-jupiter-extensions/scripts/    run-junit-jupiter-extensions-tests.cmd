@@ -68,3 +68,26 @@ CODEX - ALL IN ONE
 
 ASSERTION DENSITY
 powershell -NoProfile -File .\scripts\junit-jupiter-extensions\scripts\calc-assertion-density.ps1
+
+
+#CLAUDE COMMANDS (explicitly run only Claude tests and copy reports)
+#CLAUDE - UNIT/INTEGRATION (JUnit)
+.\gradlew.bat -PincludeTags=claude clean test --no-daemon --console=plain
+
+#CLAUDE - JaCoCo coverage
+.\gradlew.bat jacocoTestReport --no-daemon --console=plain
+powershell -NoProfile -Command "if (Test-Path 'build\\reports\\jacoco') { Copy-Item -Recurse -Force 'build\\reports\\jacoco' 'build\\reports\\jacocoClaude' }"
+REM Claude JaCoCo report: build\reports\jacocoClaude\index.html
+
+#CLAUDE - PIT mutation
+.\gradlew.bat pitest --no-daemon --console=plain
+powershell -NoProfile -Command "if (Test-Path 'build\\reports\\pitest') { Copy-Item -Recurse -Force 'build\\reports\\pitest' 'build\\reports\\pitestClaude' }"
+REM Claude PIT report: build\reports\pitestClaude\index.html
+
+#CLAUDE - PMD static analysis
+.\gradlew.bat pmdTest --no-daemon --console=plain
+powershell -NoProfile -Command "if (Test-Path 'build\\reports\\pmd') { Copy-Item -Recurse -Force 'build\\reports\\pmd' 'build\\reports\\pmdClaude' }"
+REM Claude PMD report folder: build\reports\pmdClaude\
+
+CLAUDE - ALL IN ONE
+.\gradlew.bat -PincludeTags=claude clean test jacocoTestReport pitest pmdTest --no-daemon --console=plain

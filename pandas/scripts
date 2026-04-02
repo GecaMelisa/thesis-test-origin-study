@@ -119,3 +119,26 @@ codex
 .\.venv\Scripts\coverage erase; `.\.venv\Scripts\coverage run -m pytest -m codex tests\io\parser\test_textreader_codex.py --confcutdir=tests\io\parser --ignore=pandas-src;`
 .\.venv\Scripts\coverage html -d htmlcov_codex; `.\.venv\Scripts\coverage report;`
 mutatest --src .\.venv\Lib\site-packages\pandas\io\parsers\readers.py -t "pytest -m codex tests/io/parser/test_textreader_codex.py --confcutdir=tests/io/parser --ignore=pandas-src" --nocov -m s -n 10
+
+claude
+.\.venv\Scripts\Activate.ps1; `.\.venv\Scripts\flake8 --max-line-length=100 tests\io\parser\test_textreader_claude.py;`
+.\.venv\Scripts\coverage erase; `.\.venv\Scripts\coverage run -m pytest -m claude tests\io\parser\test_textreader_claude.py --confcutdir=tests\io\parser --ignore=pandas-src;`
+.\.venv\Scripts\coverage html -d htmlcov_claude; `.\.venv\Scripts\coverage report;`
+mutatest --src .\.venv\Lib\site-packages\pandas\io\parsers\readers.py -t "pytest -m claude tests/io/parser/test_textreader_claude.py --confcutdir=tests/io/parser --ignore=pandas-src" --nocov -m s -n 10
+
+# CLAUDE TESTS (alt suite)
+
+- `.\.venv\Scripts\pytest tests\io\parser\test_textreader_claude.py`
+  Run the Claude-generated test suite by itself (no coverage).
+- `.\.venv\Scripts\coverage erase`
+  Clear old coverage data before Claude runs.
+- `.\.venv\Scripts\coverage run -m pytest tests\io\parser\test_textreader_claude.py`
+  Collect coverage while running only Claude tests.
+- `.\.venv\Scripts\coverage html --include=".venv/Lib/site-packages/pandas/io/parsers/*.py" -d htmlcov_claude`
+  Build HTML coverage focused on parser modules into `htmlcov_claude`.
+- `.\.venv\Scripts\coverage report`
+  Show text coverage summary for the Claude run.
+- `start .\htmlcov_claude\index.html`
+  Open the Claude coverage report in your default browser.
+- `mutatest --src .\.venv/Lib/site-packages/pandas/io/parsers/readers.py -t "pytest tests/io/parser/test_textreader_claude.py" --nocov -m s -n 100`
+  Run mutatest against pandas parser code using only the Claude suite.

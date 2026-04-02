@@ -45,3 +45,26 @@ Start-Process "build\reports\pitest\codex\index.html"
 # Assertion density + PMD
 .\gradlew.bat assertionDensity --no-daemon --console=plain
 .\gradlew.bat pmdTest --no-daemon --console=plain
+
+
+# CLAUDE tests only
+.\gradlew.bat -PincludeTags=claude clean test --no-daemon --console=plain
+
+# JaCoCo (CLAUDE)
+.\gradlew.bat jacocoTestReport --no-daemon --console=plain
+powershell -NoProfile -Command "if (Test-Path 'build\\reports\\jacoco') { Copy-Item -Recurse -Force 'build\\reports\\jacoco' 'build\\reports\\jacocoClaude' }"
+REM Claude JaCoCo report: build\reports\jacocoClaude\index.html
+
+# PIT (CLAUDE)
+.\gradlew.bat pitest --no-daemon --console=plain
+powershell -NoProfile -Command "if (Test-Path 'build\\reports\\pitest') { Copy-Item -Recurse -Force 'build\\reports\\pitest' 'build\\reports\\pitestClaude' }"
+REM Claude PIT report: build\reports\pitestClaude\index.html
+
+# Assertion density + PMD (CLAUDE)
+.\gradlew.bat assertionDensity --no-daemon --console=plain
+.\gradlew.bat pmdTest --no-daemon --console=plain
+powershell -NoProfile -Command "if (Test-Path 'build\\reports\\pmd') { Copy-Item -Recurse -Force 'build\\reports\\pmd' 'build\\reports\\pmdClaude' }"
+REM Claude PMD report folder: build\reports\pmdClaude\
+
+# CLAUDE - ALL IN ONE
+.\gradlew.bat -PincludeTags=claude clean test jacocoTestReport pitest pmdTest assertionDensity --no-daemon --console=plain
