@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn help:effective-pom -q)",
+      "Bash(mvn clean:*)",
+      "Read(//c/Users/mgeca/.m2//**)",
+      "Read(//c/Users/mgeca/.m2/repository/org/apache//**)",
+      "Bash(cmd.exe /c \"where mvn\")",
+      "Bash(cmd.exe /c \"mvn --version\")",
+      "Read(//c/Users/mgeca/.sdkman/candidates/maven/current/**)",
+      "Read(//c/Users/mgeca/**)",
+      "Bash(ls src/test/java/org/apache/commons/lang3/StringUtils*Test*.java src/test/java/org/apache/commons/lang3/RandomString*Test*.java)",
+      "Bash(ls src/test/java/org/apache/commons/lang3/math/NumberUtils*Test*.java)",
+      "Bash(grep -l \"isEmpty\\\\|isBlank\\\\|reverse\\\\|capitalize\" src/test/java/org/apache/commons/lang3/StringUtils*Test*.java)",
+      "Bash(ls src/test/java/org/apache/commons/lang3/StringUtils*Test*.java)",
+      "Bash(ls src/test/java/org/apache/commons/lang3/RandomStringUtils*Test*.java)",
+      "Bash(cmd.exe /c \"where mvn 2>&1 & where mvn.cmd 2>&1 & echo JAVA_HOME=%JAVA_HOME% & echo M2_HOME=%M2_HOME% & echo PATH=%PATH%\")",
+      "Bash(cmd.exe /c \"set PATH && set JAVA && set M2 && set MAVEN\")",
+      "Bash(powershell.exe -Command \"[System.Environment]::GetEnvironmentVariable\\('PATH', 'Machine'\\) + ';' + [System.Environment]::GetEnvironmentVariable\\('PATH', 'User'\\)\")"
+    ]
+  }
+}
