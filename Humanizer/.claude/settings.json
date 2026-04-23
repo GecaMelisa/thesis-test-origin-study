@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/c/Users/mgeca/.dotnet/dotnet build *)",
+      "Bash(cmd.exe /c \"cd C:\\\\\\\\Users\\\\\\\\mgeca\\\\\\\\Humanizer && dotnet build tests\\\\\\\\Humanizer.Tests\\\\\\\\Humanizer.Tests.csproj --framework net11.0 -c Release 2>&1\")"
+    ]
+  }
+}
