@@ -68,5 +68,8 @@ REM Claude PMD report: target\site\pmd-Claude.html
 # CLAUDE - ALL IN ONE (verify)
 .\mvnw.cmd clean test jacoco:report org.pitest:pitest-maven:mutationCoverage pmd:check -Dtest=*TestsClaude -DfailIfNoTests=false -DtargetTests="com.example.project.*Claude" -DtargetClasses="com.example.project.*"
 
+Start-Process target\site\jacoco\index.html
+Start-Process target\pit-reports\index.html
+Start-Process target\site\pmd.html
 
 

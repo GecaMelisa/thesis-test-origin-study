@@ -69,3 +69,12 @@ REM Claude PMD report: target\site\pmd-Claude.html
 
 # CLAUDE - ALL IN ONE (verify)
 .\mvnw.cmd clean test jacoco:report org.pitest:pitest-maven:mutationCoverage pmd:check -Dtest=*TestsClaude -DfailIfNoTests=false -DtargetTests="com.example.project.*Claude" -DtargetClasses="com.example.project.*"
+powershell -NoProfile -Command "if (Test-Path 'target\\site\\jacoco') { Copy-Item -Recurse -Force 'target\\site\\jacoco' 'target\\site\\jacocoClaude' }"
+powershell -NoProfile -Command "if (Test-Path 'target\\pit-reports') { Copy-Item -Recurse -Force 'target\\pit-reports' 'target\\pit-reports-Claude' }"
+powershell -NoProfile -Command "if (Test-Path 'target\\site\\pmd.html') { Copy-Item -Force 'target\\site\\pmd.html' 'target\\site\\pmd-Claude.html' }"
+REM Claude JaCoCo report:  target\site\jacocoClaude\index.html
+REM Claude PIT report:     target\pit-reports-Claude\<timestamp>\index.html
+REM Claude PMD report:     target\site\pmd-Claude.html
+Start-Process "target\site\jacocoClaude\index.html"
+powershell -NoProfile -Command "Start-Process (Get-ChildItem 'target\\pit-reports-Claude' | Sort-Object LastWriteTime -Descending | Select-Object -First 1 | ForEach-Object { Join-Path $_.FullName 'index.html' })"
+Start-Process "target\site\pmd-Claude.html"

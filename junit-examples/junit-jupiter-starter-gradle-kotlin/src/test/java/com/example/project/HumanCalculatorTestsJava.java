@@ -7,9 +7,9 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Tag("human")
-class HumanCalculatorTests {
+class HumanCalculatorTestsJava {
 
-    private final Calculator calculator = new Calculator();
+    private transient final Calculator calculator = new Calculator();
 
     @Test
     @DisplayName("add: 2 + 3 = 5")

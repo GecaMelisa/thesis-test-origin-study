@@ -25,7 +25,8 @@ lazy val root = project
       val tagToPrefix = Map(
         "human" -> "com.example.project.HumanCalculatorTests",
         "gpt" -> "com.example.project.CalculatorTests",
-        "codex" -> "com.example.project.CalculatorTestCodex"
+        "codex" -> "com.example.project.CalculatorTestCodex",
+        "claude" -> "com.example.project.CalculatorTestsClaude"
       )
       val allowedPrefix = tagToPrefix.getOrElse(tag, "")
       Tests.Filter(name => allowedPrefix.nonEmpty && name.startsWith(allowedPrefix))
