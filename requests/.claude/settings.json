@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"/c/Program Files/Python314/python.exe\" -m mutmut --help)",
+      "Bash(\"/c/Program Files/Python314/python.exe\" -m pip show pytest-html)",
+      "Bash(\"/c/Program Files/Python314/python.exe\" -m pip install pytest-html --quiet)",
+      "Bash(\"/c/Program Files/Python314/python.exe\" -m pip show coverage)",
+      "Bash(\"/c/Program Files/Python314/python.exe\" -m pip install pytest-html)",
+      "Bash(\"/c/Program Files/Python314/python.exe\" -m pytest tests/test_utils_claude.py --html=reports/pytest-test.html --self-contained-html -q)",
+      "Bash(\"/c/Program Files/Python314/python.exe\" -m pip install flake8-html cosmic-ray)",
+      "Bash(\"/c/Program Files/Python314/python.exe\" -m flake8 tests/test_utils_claude.py --format=html --htmldir=reports/flake8-test)",
+      "Bash(\"/c/Users/mgeca/AppData/Roaming/Python/Python314/Scripts/cosmic-ray.exe\" --help)",
+      "Bash(\"/c/Users/mgeca/AppData/Roaming/Python/Python314/Scripts/cosmic-ray.exe\" new-config *)"
+    ]
+  }
+}

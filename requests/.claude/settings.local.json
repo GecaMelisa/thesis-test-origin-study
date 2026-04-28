@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest tests/test_utils_claude.py tests/test_structures_claude.py -v)",
+      "Bash(py -m pytest tests/test_utils_claude.py tests/test_structures_claude.py -v)",
+      "Read(//c/Users/mgeca/miniconda3/bin/**)",
+      "Read(//c/Users/mgeca/anaconda3/**)",
+      "Bash(cmd /c \"py -3 -m pytest --version\")",
+      "Bash(cmd /c \"py -3 --version\")",
+      "Bash(cmd /c \"py -3 -c \\\\\"import requests; print\\(requests.__version__\\)\\\\\"\")",
+      "Bash(cmd /c \"py -3.11 --version 2>&1\")",
+      "Bash(cmd /c \"py -0 2>&1\")",
+      "Bash(cmd /c \"py --version\")",
+      "Bash(cmd /c \"py -0p\")",
+      "Bash(\"/c/Program Files/Python314/python.exe\" -m pytest --version)",
+      "Bash(\"/c/Program Files/Python314/python.exe\" -m pip install -e .)",
+      "Bash(\"/c/Program Files/Python314/python.exe\" -m pytest tests/test_utils_claude.py tests/test_structures_claude.py -v)"
+    ]
+  }
+}
